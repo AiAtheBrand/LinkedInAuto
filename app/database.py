@@ -5,55 +5,54 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-# Load local environment variables during development.
-# On Railway, environment variables are supplied by the platform.
+
+# --------------------------------------------------
+# ENVIRONMENT CONFIGURATION
+# --------------------------------------------------
+
 load_dotenv()
-
-
-# --------------------------------------------------
-# DATABASE CONFIGURATION
-# --------------------------------------------------
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    if ENVIRONMENT == "production":
-        raise RuntimeError(
-            "DATABASE_URL must be configured in production."
-        )
-
-    # Local development default
-    DATABASE_URL = "sqlite:///./app.db"
-
-
-# Railway MySQL URLs may use mysql://.
-# Explicitly select the PyMySQL driver installed in requirements.txt.
-if DATABASE_URL.startswith("mysql://"):
-    DATABASE_URL = DATABASE_URL.replace(
-        "mysql://",
-        "mysql+pymysql://",
-        1
+    raise RuntimeError(
+        "DATABASE_URL is missing. Please configure it in your .env file."
     )
 
 
-# SQLite requires a special connection argument.
-connect_args = (
-    {"check_same_thread": False}
-    if DATABASE_URL.startswith("sqlite")
-    else {}
-)
+# Support PostgreSQL connection URLs from hosting providers.
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgres://",
+        "postgresql+psycopg://",
+        1
+    )
+
+elif DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgresql://",
+        "postgresql+psycopg://",
+        1
+    )
 
 
 # --------------------------------------------------
 # SQLALCHEMY ENGINE
 # --------------------------------------------------
 
+connect_args = (
+    {"check_same_thread": False}
+    if DATABASE_URL.startswith("sqlite")
+    else {}
+)
+
 engine = create_engine(
     DATABASE_URL,
     connect_args=connect_args,
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    pool_recycle=300
 )
 
 
