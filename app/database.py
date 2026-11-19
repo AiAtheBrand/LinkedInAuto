@@ -1,31 +1,65 @@
+
 import os
+
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
+# Load local environment variables during development.
+# On Railway, environment variables are supplied by the platform.
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
+
+# --------------------------------------------------
+# DATABASE CONFIGURATION
+# --------------------------------------------------
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    if ENVIRONMENT == "production":
+        raise RuntimeError(
+            "DATABASE_URL must be configured in production."
+        )
+
+    # Local development default
+    DATABASE_URL = "sqlite:///./app.db"
 
 
-def create_resilient_engine():
-    global DATABASE_URL
-    connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
-    try:
-        eng = create_engine(DATABASE_URL, connect_args=connect_args)
-        with eng.connect():
-            pass
-        return eng
-    except Exception as exc:
-        if not DATABASE_URL.startswith("sqlite"):
-            print(f"\n[DATABASE NOTICE] Could not connect to configured database ({exc}).")
-            print("[DATABASE NOTICE] Automatically falling back to local SQLite database: sqlite:///./app.db\n")
-            DATABASE_URL = "sqlite:///./app.db"
-            return create_engine("sqlite:///./app.db", connect_args={"check_same_thread": False})
-        raise exc
+# Railway MySQL URLs may use mysql://.
+# Explicitly select the PyMySQL driver installed in requirements.txt.
+if DATABASE_URL.startswith("mysql://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "mysql://",
+        "mysql+pymysql://",
+        1
+    )
 
 
-engine = create_resilient_engine()
+# SQLite requires a special connection argument.
+connect_args = (
+    {"check_same_thread": False}
+    if DATABASE_URL.startswith("sqlite")
+    else {}
+)
+
+
+# --------------------------------------------------
+# SQLALCHEMY ENGINE
+# --------------------------------------------------
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args=connect_args,
+    pool_pre_ping=True
+)
+
+
+# --------------------------------------------------
+# DATABASE SESSION
+# --------------------------------------------------
 
 SessionLocal = sessionmaker(
     bind=engine,
@@ -38,38 +72,78 @@ class Base(DeclarativeBase):
     pass
 
 
+# --------------------------------------------------
+# DATABASE SCHEMA MIGRATION
+# --------------------------------------------------
+
 def migrate_db_schema(eng):
-    """Automatically upgrades existing database tables with missing columns like user_id."""
-    try:
-        inspector = inspect(eng)
-        existing_tables = inspector.get_table_names()
+    """
+    Adds missing columns to existing tables.
+    """
 
-        with eng.connect() as conn:
-            # 1. Check learnings table for user_id
-            if "learnings" in existing_tables:
-                columns = [c["name"] for c in inspector.get_columns("learnings")]
-                if "user_id" not in columns:
-                    print("[MIGRATION] Adding missing 'user_id' column to 'learnings' table...")
-                    conn.execute(text("ALTER TABLE learnings ADD COLUMN user_id INT NOT NULL DEFAULT 1"))
-                    conn.commit()
+    inspector = inspect(eng)
+    existing_tables = inspector.get_table_names()
 
-            # 2. Check posts table for user_id and image_url
-            if "posts" in existing_tables:
-                columns = [c["name"] for c in inspector.get_columns("posts")]
-                if "user_id" not in columns:
-                    print("[MIGRATION] Adding missing 'user_id' column to 'posts' table...")
-                    conn.execute(text("ALTER TABLE posts ADD COLUMN user_id INT NOT NULL DEFAULT 1"))
-                    conn.commit()
-                if "image_url" not in columns:
-                    print("[MIGRATION] Adding missing 'image_url' column to 'posts' table...")
-                    conn.execute(text("ALTER TABLE posts ADD COLUMN image_url VARCHAR(500) NULL"))
-                    conn.commit()
-    except Exception as exc:
-        print(f"[MIGRATION WARNING] Automatic schema check encountered: {exc}")
+    with eng.begin() as conn:
 
+        # Update learnings table
+        if "learnings" in existing_tables:
+            columns = {
+                column["name"]
+                for column in inspector.get_columns("learnings")
+            }
+
+            if "user_id" not in columns:
+                print(
+                    "[MIGRATION] Adding user_id to learnings table..."
+                )
+
+                conn.execute(
+                    text(
+                        "ALTER TABLE learnings "
+                        "ADD COLUMN user_id INT NOT NULL DEFAULT 1"
+                    )
+                )
+
+        # Update posts table
+        if "posts" in existing_tables:
+            columns = {
+                column["name"]
+                for column in inspector.get_columns("posts")
+            }
+
+            if "user_id" not in columns:
+                print(
+                    "[MIGRATION] Adding user_id to posts table..."
+                )
+
+                conn.execute(
+                    text(
+                        "ALTER TABLE posts "
+                        "ADD COLUMN user_id INT NOT NULL DEFAULT 1"
+                    )
+                )
+
+            if "image_url" not in columns:
+                print(
+                    "[MIGRATION] Adding image_url to posts table..."
+                )
+
+                conn.execute(
+                    text(
+                        "ALTER TABLE posts "
+                        "ADD COLUMN image_url VARCHAR(500) NULL"
+                    )
+                )
+
+
+# --------------------------------------------------
+# DATABASE DEPENDENCY
+# --------------------------------------------------
 
 def get_db():
     db = SessionLocal()
+
     try:
         yield db
     finally:
