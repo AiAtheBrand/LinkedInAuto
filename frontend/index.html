@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Content Automation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="app-header">
+    <div class="header-container">
+        <div class="logo-area">
+            <h1>LinkedIn Automation</h1>
+            <span class="badge">Multi-Tenant</span>
+        </div>
+        <div id="auth-header-area">
+            <!-- Populated dynamically: Login/Register forms or User Profile -->
+        </div>
+    </div>
+</header>
+
+<main class="main-container">
+
+    <!-- Auth Modal / Card (Shown when logged out) -->
+    <section id="auth-section" class="card auth-card">
+        <h2>Welcome to LinkedIn Automation</h2>
+        <p class="subtitle">Please sign in or create an account to manage your learning materials and publish to LinkedIn.</p>
+
+        <div class="auth-tabs">
+            <button id="tab-login" class="tab-btn active" onclick="switchAuthTab('login')">Sign In</button>
+            <button id="tab-register" class="tab-btn" onclick="switchAuthTab('register')">Create Account</button>
+        </div>
+
+        <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+            <div id="auth-name-group" class="form-group" style="display: none;">
+                <label for="auth-fullname">Full Name</label>
+                <input type="text" id="auth-fullname" placeholder="e.g. Israel Adedokun">
+            </div>
+
+            <div class="form-group">
+                <label for="auth-email">Email Address</label>
+                <input type="email" id="auth-email" placeholder="you@example.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="auth-password">Password</label>
+                <input type="password" id="auth-password" placeholder="Minimum 8 characters" required>
+            </div>
+
+            <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-block">Sign In</button>
+            <p id="auth-message" class="message-banner"></p>
+        </form>
+    </section>
+
+    <!-- Main App Container (Shown only when logged in) -->
+    <div id="app-workspace" style="display: none;">
+
+        <!-- LinkedIn Account Management Section -->
+        <section class="card linkedin-card">
+            <div class="section-header">
+                <h2>Connected LinkedIn Accounts</h2>
+                <button id="connect-linkedin-btn" class="btn btn-linkedin" onclick="startLinkedInOAuth()">
+                    + Connect LinkedIn Account
+                </button>
+            </div>
+            <div id="linkedin-accounts-list" class="accounts-grid">
+                <p class="empty-text">Loading connected accounts...</p>
+            </div>
+        </section>
+
+        <!-- Create Learning Form -->
+        <section class="card">
+            <h2>Log Your Technical Learning</h2>
+            <p class="subtitle">Document what you learned today. Our AI will transform it into an authentic, high-engagement LinkedIn post.</p>
+
+            <form id="learning-form" onsubmit="handleLearningSubmit(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="topic">Topic *</label>
+                        <input type="text" id="topic" placeholder="e.g. FastAPI Dependency Injection" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="category">Category *</label>
+                        <input type="text" id="category" placeholder="e.g. Backend Development" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="problem">Problem Encountered (Optional)</label>
+                    <textarea id="problem" rows="2" placeholder="What challenge or roadblock did you run into?"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="what_i_learned">What You Learned & Solution *</label>
+                    <textarea id="what_i_learned" rows="4" placeholder="How did you solve it? What was the breakthrough?" required></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="project">Project Context (Optional)</label>
+                        <input type="text" id="project" placeholder="e.g. LinkedIn Automation API">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lesson">Key Takeaway / Lesson</label>
+                        <input type="text" id="lesson" placeholder="e.g. Decoupling ensures resilience">
+                    </div>
+                </div>
+
+                <button type="submit" id="learning-submit-btn" class="btn btn-primary">
+                    Save & Generate AI Draft
+                </button>
+                <span id="form-spinner" class="spinner" style="display: none;"></span>
+            </form>
+            <p id="form-message" class="message-banner"></p>
+        </section>
+
+        <!-- Two Column Layout: Learnings and Posts -->
+        <div class="columns-grid">
+            <!-- Learning Entries -->
+            <section class="card column-section">
+                <div class="section-header">
+                    <h2>My Learning Journal</h2>
+                    <span id="learning-count" class="count-badge">0</span>
+                </div>
+                <div id="learning-container" class="cards-list">
+                    <p class="empty-text">No learning entries yet.</p>
+                </div>
+            </section>
+
+            <!-- Generated Posts / Drafts -->
+            <section class="card column-section">
+                <div class="section-header">
+                    <h2>LinkedIn Drafts & Publications</h2>
+                    <span id="posts-count" class="count-badge">0</span>
+                </div>
+                <div id="posts-container" class="cards-list">
+                    <p class="empty-text">No posts generated yet.</p>
+                </div>
+            </section>
+        </div>
+
+    </div>
+
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>
