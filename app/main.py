@@ -1,3 +1,4 @@
+from pathlib import Path
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,9 +38,23 @@ app.include_router(linkedin_router)
 app.include_router(publication_router)
 
 # Mount uploads directory for user-uploaded media
-uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
-os.makedirs(uploads_dir, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+# Mount uploads directory for user-uploaded media
+project_root = Path(__file__).resolve().parent.parent
+
+media_dir = Path(
+    os.getenv("UPLOAD_DIR", str(project_root / "uploads" / "media"))
+).resolve()
+
+uploads_dir = media_dir.parent
+
+media_dir.mkdir(parents=True, exist_ok=True)
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory=str(uploads_dir)),
+    name="uploads"
+)
+
 
 # Mount frontend directory so the app can be used directly from http://127.0.0.1:8000/app/
 frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")

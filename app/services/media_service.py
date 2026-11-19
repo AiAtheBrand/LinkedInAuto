@@ -28,11 +28,14 @@ class MediaService:
 
     def __init__(self, base_upload_dir: str | None = None):
         if base_upload_dir is None:
-            base_upload_dir = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-                "uploads",
-                "media"
-            )
+            base_upload_dir = os.getenv("UPLOAD_DIR")
+
+            if not base_upload_dir:
+                base_upload_dir = os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                    "uploads",
+                    "media"
+                )
         self.upload_dir = Path(base_upload_dir).resolve()
         self.upload_dir.mkdir(parents=True, exist_ok=True)
 
