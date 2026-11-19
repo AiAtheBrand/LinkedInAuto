@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+
 from app.database import Base, engine, migrate_db_schema
 from app.routers.auth import router as auth_router
 from app.routers.learning import router as learning_router
@@ -11,6 +12,8 @@ from app.routers.linkedin import router as linkedin_router
 from app.routers.post import router as post_router
 from app.routers.publication import router as publication_router
 
+
+import app.models
 Base.metadata.create_all(bind=engine)
 migrate_db_schema(engine)
 
