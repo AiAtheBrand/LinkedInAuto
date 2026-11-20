@@ -1,9 +1,9 @@
-const hostname = (window.location.hostname && window.location.hostname !== "")
-    ? window.location.hostname
-    : "127.0.0.1";
-const API_URL = window.location.port === "8000"
-    ? window.location.origin
-    : `http://${hostname}:8000`;
+const API_URL =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+        ? "http://127.0.0.1:8000"
+        : "https://linkedinauto-edi2.onrender.com";
+
 
 let currentUser = null;
 let connectedAccounts = [];

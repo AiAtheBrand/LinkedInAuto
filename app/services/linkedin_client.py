@@ -31,8 +31,10 @@ class LinkedInClient:
     ):
         self.client_id = client_id or os.getenv("LINKEDIN_CLIENT_ID", "")
         self.client_secret = client_secret or os.getenv("LINKEDIN_CLIENT_SECRET", "")
-        self.redirect_uri = redirect_uri or os.getenv("LINKEDIN_REDIRECT_URI", "http://127.0.0.1:8000/linkedin/oauth/callback")
-
+        self.redirect_uri = redirect_uri or os.getenv(
+            "LINKEDIN_REDIRECT_URI",
+            "http://127.0.0.1:8000/linkedin/oauth/callback"
+        )
     def build_authorization_url(self, state: str, scopes: list[str] | None = None) -> str:
         if scopes is None:
             scopes = ["openid", "profile", "email", "w_member_social"]
