@@ -11,6 +11,7 @@ from app.routers.learning import router as learning_router
 from app.routers.linkedin import router as linkedin_router
 from app.routers.post import router as post_router
 from app.routers.publication import router as publication_router
+from app.routers.social import router as social_router
 
 
 import app.models
@@ -40,8 +41,8 @@ app.include_router(learning_router)
 app.include_router(post_router)
 app.include_router(linkedin_router)
 app.include_router(publication_router)
+app.include_router(social_router)
 
-# Mount uploads directory for user-uploaded media
 # Mount uploads directory for user-uploaded media
 project_root = Path(__file__).resolve().parent.parent
 

@@ -28,9 +28,22 @@ class Publication(Base):
         index=True
     )
 
-    linkedin_account_id: Mapped[int] = mapped_column(
-        ForeignKey("linkedin_accounts.id"),
+    platform: Mapped[str] = mapped_column(
+        String(50),
+        default="linkedin",
         nullable=False,
+        index=True
+    )
+
+    linkedin_account_id: Mapped[int | None] = mapped_column(
+        ForeignKey("linkedin_accounts.id"),
+        nullable=True,
+        index=True
+    )
+
+    social_account_id: Mapped[int | None] = mapped_column(
+        ForeignKey("social_accounts.id"),
+        nullable=True,
         index=True
     )
 
@@ -42,6 +55,11 @@ class Publication(Base):
     )
 
     linkedin_post_urn: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True
+    )
+
+    remote_post_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True
     )
@@ -76,3 +94,4 @@ class Publication(Base):
     user = relationship("User")
     post = relationship("Post")
     linkedin_account = relationship("LinkedInAccount")
+    social_account = relationship("SocialAccount")

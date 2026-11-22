@@ -35,13 +35,16 @@ class PublicationResponse(BaseModel):
     id: int
     user_id: int
     post_id: int
-    linkedin_account_id: int
+    platform: str = "linkedin"
+    linkedin_account_id: int | None = None
+    social_account_id: int | None = None
     status: str
-    linkedin_post_urn: str | None
-    error_message: str | None
+    linkedin_post_urn: str | None = None
+    remote_post_id: str | None = None
+    error_message: str | None = None
     attempt_count: int
-    scheduled_at: datetime | None
-    published_at: datetime | None
+    scheduled_at: datetime | None = None
+    published_at: datetime | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

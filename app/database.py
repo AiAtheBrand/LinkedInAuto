@@ -77,7 +77,7 @@ class Base(DeclarativeBase):
 
 def migrate_db_schema(eng):
     """
-    Adds missing columns to existing tables.
+    Adds missing columns to existing tables across database engines.
     """
 
     inspector = inspect(eng)
@@ -96,7 +96,6 @@ def migrate_db_schema(eng):
                 print(
                     "[MIGRATION] Adding user_id to learnings table..."
                 )
-
                 conn.execute(
                     text(
                         "ALTER TABLE learnings "
@@ -115,7 +114,6 @@ def migrate_db_schema(eng):
                 print(
                     "[MIGRATION] Adding user_id to posts table..."
                 )
-
                 conn.execute(
                     text(
                         "ALTER TABLE posts "
@@ -127,11 +125,50 @@ def migrate_db_schema(eng):
                 print(
                     "[MIGRATION] Adding image_url to posts table..."
                 )
-
                 conn.execute(
                     text(
                         "ALTER TABLE posts "
                         "ADD COLUMN image_url VARCHAR(500) NULL"
+                    )
+                )
+
+        # Update publications table
+        if "publications" in existing_tables:
+            columns = {
+                column["name"]
+                for column in inspector.get_columns("publications")
+            }
+
+            if "platform" not in columns:
+                print(
+                    "[MIGRATION] Adding platform to publications table..."
+                )
+                conn.execute(
+                    text(
+                        "ALTER TABLE publications "
+                        "ADD COLUMN platform VARCHAR(50) NOT NULL DEFAULT 'linkedin'"
+                    )
+                )
+
+            if "social_account_id" not in columns:
+                print(
+                    "[MIGRATION] Adding social_account_id to publications table..."
+                )
+                conn.execute(
+                    text(
+                        "ALTER TABLE publications "
+                        "ADD COLUMN social_account_id INT NULL"
+                    )
+                )
+
+            if "remote_post_id" not in columns:
+                print(
+                    "[MIGRATION] Adding remote_post_id to publications table..."
+                )
+                conn.execute(
+                    text(
+                        "ALTER TABLE publications "
+                        "ADD COLUMN remote_post_id VARCHAR(255) NULL"
                     )
                 )
 

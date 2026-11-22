@@ -46,3 +46,4 @@ class User(Base):
     learnings = relationship("Learning", back_populates="user", cascade="all, delete-orphan")
     posts = relationship("Post", back_populates="user", cascade="all, delete-orphan")
     linkedin_accounts = relationship("LinkedInAccount", back_populates="user", cascade="all, delete-orphan")
+    social_accounts = relationship("SocialAccount", back_populates="user", cascade="all, delete-orphan")

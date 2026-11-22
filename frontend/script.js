@@ -4,10 +4,125 @@ const API_URL =
         ? "http://127.0.0.1:8000"
         : "https://linkedinauto-edi2.onrender.com";
 
-
 let currentUser = null;
-let connectedAccounts = [];
+let connectedLinkedInAccounts = [];
+let connectedSocialAccounts = [];
+let currentAccountFilter = "all";
 let authMode = "login"; // 'login' or 'register'
+
+/* =============================================================
+   FORM VALIDATION HELPERS
+   ============================================================= */
+
+const EMAIL_REGEX = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/;
+const INSTAGRAM_HANDLE_REGEX = /^@?[a-zA-Z0-9._]{1,30}$/;
+
+function isValidEmail(email) {
+    if (!email || typeof email !== "string") return false;
+    const trimmed = email.trim();
+    return EMAIL_REGEX.test(trimmed);
+}
+
+function setFieldError(inputId, errorMsg) {
+    const el = document.getElementById(inputId);
+    const errEl = document.getElementById(`${inputId}-error`);
+    if (el) el.classList.add("input-error");
+    if (errEl) errEl.textContent = errorMsg || "";
+}
+
+function clearFieldError(inputId) {
+    const el = document.getElementById(inputId);
+    const errEl = document.getElementById(`${inputId}-error`);
+    if (el) el.classList.remove("input-error");
+    if (errEl) errEl.textContent = "";
+}
+
+function setupInputLiveValidation() {
+    // Auth inputs
+    const authEmail = document.getElementById("auth-email");
+    const authPassword = document.getElementById("auth-password");
+    const authFullname = document.getElementById("auth-fullname");
+
+    if (authEmail) {
+        authEmail.addEventListener("input", () => {
+            const val = authEmail.value.trim();
+            if (!val) {
+                setFieldError("auth-email", "Email cannot be blank.");
+            } else if (!isValidEmail(val)) {
+                setFieldError("auth-email", "Please enter a valid email format (e.g. name@example.com).");
+            } else {
+                clearFieldError("auth-email");
+            }
+        });
+    }
+
+    if (authPassword) {
+        authPassword.addEventListener("input", () => {
+            const val = authPassword.value;
+            if (!val || !val.trim()) {
+                setFieldError("auth-password", "Password cannot be blank or contain only spaces.");
+            } else if (val.length < 8) {
+                setFieldError("auth-password", "Password must be at least 8 characters long.");
+            } else {
+                clearFieldError("auth-password");
+            }
+        });
+    }
+
+    if (authFullname) {
+        authFullname.addEventListener("input", () => {
+            clearFieldError("auth-fullname");
+        });
+    }
+
+    // Learning form inputs
+    ["topic", "category", "what_i_learned"].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener("input", () => {
+                if (input.value.trim()) clearFieldError(id);
+            });
+        }
+    });
+
+    // Facebook modal inputs
+    ["fb-page-name", "fb-page-id", "fb-email", "fb-token"].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener("input", () => {
+                if (id === "fb-email" && input.value.trim()) {
+                    if (!isValidEmail(input.value.trim())) {
+                        setFieldError("fb-email", "Invalid email format.");
+                        return;
+                    }
+                }
+                clearFieldError(id);
+            });
+        }
+    });
+
+    // Instagram modal inputs
+    ["ig-handle", "ig-name", "ig-email", "ig-token"].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener("input", () => {
+                if (id === "ig-handle" && input.value.trim()) {
+                    if (!INSTAGRAM_HANDLE_REGEX.test(input.value.trim())) {
+                        setFieldError("ig-handle", "Invalid handle. Letters, numbers, dots and underscores only.");
+                        return;
+                    }
+                }
+                if (id === "ig-email" && input.value.trim()) {
+                    if (!isValidEmail(input.value.trim())) {
+                        setFieldError("ig-email", "Invalid email format.");
+                        return;
+                    }
+                }
+                clearFieldError(id);
+            });
+        }
+    });
+}
 
 /* =============================================================
    AUTHENTICATION & FETCH HELPERS
@@ -29,7 +144,6 @@ async function authFetch(endpoint, options = {}) {
     const token = getToken();
     const headers = { ...(options.headers || {}) };
 
-    // Don't force application/json if sending FormData (browser needs to set multipart boundary)
     if (!(options.body instanceof FormData) && !headers["Content-Type"]) {
         headers["Content-Type"] = "application/json";
     }
@@ -45,7 +159,6 @@ async function authFetch(endpoint, options = {}) {
         });
 
         if (response.status === 401) {
-            // Token expired or invalid
             setToken(null);
             currentUser = null;
             updateUI();
@@ -70,6 +183,10 @@ function switchAuthTab(mode) {
     const msg = document.getElementById("auth-message");
     msg.textContent = "";
 
+    clearFieldError("auth-email");
+    clearFieldError("auth-password");
+    clearFieldError("auth-fullname");
+
     if (mode === "register") {
         tabLogin.classList.remove("active");
         tabRegister.classList.add("active");
@@ -85,25 +202,60 @@ function switchAuthTab(mode) {
 
 async function handleAuthSubmit(event) {
     event.preventDefault();
-    const email = document.getElementById("auth-email").value.trim();
-    const password = document.getElementById("auth-password").value;
-    const fullName = document.getElementById("auth-fullname").value.trim();
+    const emailInput = document.getElementById("auth-email");
+    const passwordInput = document.getElementById("auth-password");
+    const fullNameInput = document.getElementById("auth-fullname");
     const msg = document.getElementById("auth-message");
     const submitBtn = document.getElementById("auth-submit-btn");
+
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    const fullName = fullNameInput ? fullNameInput.value.trim() : "";
+
+    // Client-side validation checks
+    let hasError = false;
+
+    if (!email) {
+        setFieldError("auth-email", "Email address cannot be blank.");
+        hasError = true;
+    } else if (!isValidEmail(email)) {
+        setFieldError("auth-email", "Please enter a valid email format (e.g. name@example.com).");
+        hasError = true;
+    } else {
+        clearFieldError("auth-email");
+    }
+
+    if (!password || !password.trim()) {
+        setFieldError("auth-password", "Password cannot be blank or contain only spaces.");
+        hasError = true;
+    } else if (password.length < 8) {
+        setFieldError("auth-password", "Password must be at least 8 characters long.");
+        hasError = true;
+    } else {
+        clearFieldError("auth-password");
+    }
+
+    if (hasError) {
+        msg.style.color = "var(--danger)";
+        msg.textContent = "Please fix the form errors highlighted above.";
+        return;
+    }
 
     msg.textContent = "";
     submitBtn.disabled = true;
 
     try {
         if (authMode === "register") {
-            // Register
             const res = await fetch(`${API_URL}/auth/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password, full_name: fullName || null })
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || "Registration failed");
+            if (!res.ok) {
+                const detail = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
+                throw new Error(detail || "Registration failed");
+            }
 
             // Auto-login after registration
             const loginRes = await fetch(`${API_URL}/auth/login`, {
@@ -117,14 +269,16 @@ async function handleAuthSubmit(event) {
             setToken(loginData.access_token);
             currentUser = loginData.user;
         } else {
-            // Login
             const res = await fetch(`${API_URL}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password })
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || "Invalid credentials");
+            if (!res.ok) {
+                const detail = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
+                throw new Error(detail || "Invalid credentials");
+            }
 
             setToken(data.access_token);
             currentUser = data.user;
@@ -168,7 +322,8 @@ async function checkAuthSession() {
 function logout() {
     setToken(null);
     currentUser = null;
-    connectedAccounts = [];
+    connectedLinkedInAccounts = [];
+    connectedSocialAccounts = [];
     updateUI();
 }
 
@@ -194,37 +349,204 @@ function updateUI() {
 }
 
 /* =============================================================
-   LINKEDIN ACCOUNTS & OAUTH
+   SOCIAL ACCOUNTS MANAGEMENT (LINKEDIN, FACEBOOK, INSTAGRAM)
    ============================================================= */
 
-async function loadLinkedInAccounts() {
-    const listEl = document.getElementById("linkedin-accounts-list");
-    try {
-        const res = await authFetch("/linkedin/accounts");
-        if (!res.ok) throw new Error("Failed to load accounts");
-        connectedAccounts = await res.json();
+function filterAccountsTab(platform, btnEl) {
+    currentAccountFilter = platform;
+    document.querySelectorAll(".filter-tab").forEach(tab => tab.classList.remove("active"));
+    if (btnEl) btnEl.classList.add("active");
+    renderSocialAccounts();
+}
 
-        listEl.innerHTML = "";
-        if (connectedAccounts.length === 0) {
-            listEl.innerHTML = `<p class="empty-text">No LinkedIn accounts connected. Click "+ Connect LinkedIn Account" above.</p>`;
-            return;
+async function loadAllAccounts() {
+    try {
+        const [liRes, socialRes] = await Promise.all([
+            authFetch("/linkedin/accounts"),
+            authFetch("/social/accounts")
+        ]);
+
+        connectedLinkedInAccounts = liRes.ok ? await liRes.json() : [];
+        connectedSocialAccounts = socialRes.ok ? await socialRes.json() : [];
+
+        renderSocialAccounts();
+    } catch (err) {
+        const listEl = document.getElementById("social-accounts-list");
+        if (listEl) listEl.innerHTML = `<p class="empty-text">${escapeHtml(err.message)}</p>`;
+    }
+}
+
+function renderSocialAccounts() {
+    const listEl = document.getElementById("social-accounts-list");
+    if (!listEl) return;
+
+    listEl.innerHTML = "";
+
+    const combined = [
+        ...connectedLinkedInAccounts.map(a => ({ ...a, platform: "linkedin" })),
+        ...connectedSocialAccounts
+    ];
+
+    const filtered = currentAccountFilter === "all"
+        ? combined
+        : combined.filter(a => a.platform === currentAccountFilter);
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = `<p class="empty-text">No ${currentAccountFilter === "all" ? "" : currentAccountFilter + " "}accounts connected. Click the buttons above to connect.</p>`;
+        return;
+    }
+
+    filtered.forEach(acc => {
+        const pill = document.createElement("div");
+        pill.className = "account-pill";
+
+        let avatarClass = "avatar-linkedin";
+        let avatarText = "in";
+        let isLinkedIn = acc.platform === "linkedin";
+
+        if (acc.platform === "facebook") {
+            avatarClass = "avatar-facebook";
+            avatarText = "fb";
+        } else if (acc.platform === "instagram") {
+            avatarClass = "avatar-instagram";
+            avatarText = "ig";
         }
 
-        connectedAccounts.forEach(acc => {
-            const pill = document.createElement("div");
-            pill.className = "account-pill";
-            pill.innerHTML = `
-                <div class="account-avatar">in</div>
-                <div class="account-info">
-                    <h4>${acc.name}</h4>
-                    <p>${acc.email || acc.linkedin_member_urn}</p>
-                </div>
-                <button class="btn btn-danger btn-sm" onclick="disconnectAccount(${acc.id})">Disconnect</button>
-            `;
-            listEl.appendChild(pill);
+        const subtitle = isLinkedIn
+            ? (acc.email || acc.linkedin_member_urn)
+            : (acc.account_identifier + (acc.email ? ` • ${acc.email}` : ""));
+
+        const disconnectAction = isLinkedIn
+            ? `disconnectLinkedInAccount(${acc.id})`
+            : `disconnectSocialAccount(${acc.id}, '${acc.platform}')`;
+
+        pill.innerHTML = `
+            <div class="account-avatar ${avatarClass}">${avatarText}</div>
+            <div class="account-info">
+                <h4>${escapeHtml(acc.name)}</h4>
+                <p title="${escapeHtml(subtitle)}">${escapeHtml(subtitle)}</p>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="${disconnectAction}">Disconnect</button>
+        `;
+        listEl.appendChild(pill);
+    });
+}
+
+// Modal handling
+function openConnectModal(platform) {
+    const modal = document.getElementById(`modal-${platform}`);
+    if (modal) modal.style.display = "flex";
+}
+
+function closeConnectModal(platform) {
+    const modal = document.getElementById(`modal-${platform}`);
+    if (modal) {
+        modal.style.display = "none";
+        const form = document.getElementById(platform === "facebook" ? "connect-fb-form" : "connect-ig-form");
+        if (form) form.reset();
+        const msg = document.getElementById(platform === "facebook" ? "fb-modal-msg" : "ig-modal-msg");
+        if (msg) msg.textContent = "";
+    }
+}
+
+// Facebook Form Submit
+async function handleConnectFacebook(event) {
+    event.preventDefault();
+    const name = document.getElementById("fb-page-name").value.trim();
+    const pageId = document.getElementById("fb-page-id").value.trim();
+    const email = document.getElementById("fb-email").value.trim();
+    const token = document.getElementById("fb-token").value.trim();
+    const msg = document.getElementById("fb-modal-msg");
+    const btn = document.getElementById("fb-submit-btn");
+
+    let hasError = false;
+    if (!name) { setFieldError("fb-page-name", "Page name cannot be blank."); hasError = true; } else { clearFieldError("fb-page-name"); }
+    if (!pageId) { setFieldError("fb-page-id", "Page ID cannot be blank."); hasError = true; } else { clearFieldError("fb-page-id"); }
+    if (email && !isValidEmail(email)) { setFieldError("fb-email", "Invalid email format."); hasError = true; } else { clearFieldError("fb-email"); }
+    if (!token) { setFieldError("fb-token", "Access token cannot be blank."); hasError = true; } else { clearFieldError("fb-token"); }
+
+    if (hasError) return;
+
+    btn.disabled = true;
+    msg.textContent = "";
+
+    try {
+        const res = await authFetch("/social/accounts", {
+            method: "POST",
+            body: JSON.stringify({
+                platform: "facebook",
+                name,
+                account_identifier: pageId,
+                email: email || null,
+                access_token: token
+            })
         });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to connect Facebook page");
+
+        closeConnectModal("facebook");
+        await loadAllAccounts();
+        await loadPosts();
     } catch (err) {
-        listEl.innerHTML = `<p class="empty-text">${err.message}</p>`;
+        msg.style.color = "var(--danger)";
+        msg.textContent = err.message;
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// Instagram Form Submit
+async function handleConnectInstagram(event) {
+    event.preventDefault();
+    const handle = document.getElementById("ig-handle").value.trim();
+    const name = document.getElementById("ig-name").value.trim();
+    const email = document.getElementById("ig-email").value.trim();
+    const token = document.getElementById("ig-token").value.trim();
+    const msg = document.getElementById("ig-modal-msg");
+    const btn = document.getElementById("ig-submit-btn");
+
+    let hasError = false;
+    if (!handle) {
+        setFieldError("ig-handle", "Instagram handle cannot be blank.");
+        hasError = true;
+    } else if (!INSTAGRAM_HANDLE_REGEX.test(handle)) {
+        setFieldError("ig-handle", "Invalid handle. Letters, numbers, dots and underscores only.");
+        hasError = true;
+    } else {
+        clearFieldError("ig-handle");
+    }
+
+    if (!name) { setFieldError("ig-name", "Display name cannot be blank."); hasError = true; } else { clearFieldError("ig-name"); }
+    if (email && !isValidEmail(email)) { setFieldError("ig-email", "Invalid email format."); hasError = true; } else { clearFieldError("ig-email"); }
+    if (!token) { setFieldError("ig-token", "Access token cannot be blank."); hasError = true; } else { clearFieldError("ig-token"); }
+
+    if (hasError) return;
+
+    btn.disabled = true;
+    msg.textContent = "";
+
+    try {
+        const res = await authFetch("/social/accounts", {
+            method: "POST",
+            body: JSON.stringify({
+                platform: "instagram",
+                name,
+                account_identifier: handle,
+                email: email || null,
+                access_token: token
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to connect Instagram account");
+
+        closeConnectModal("instagram");
+        await loadAllAccounts();
+        await loadPosts();
+    } catch (err) {
+        msg.style.color = "var(--danger)";
+        msg.textContent = err.message;
+    } finally {
+        btn.disabled = false;
     }
 }
 
@@ -234,14 +556,12 @@ async function startLinkedInOAuth() {
         if (!res.ok) throw new Error("Failed to start OAuth");
         const data = await res.json();
 
-        // Open LinkedIn in a new tab/window
         const authWindow = window.open(data.authorization_url, "_blank", "width=600,height=700");
 
-        // Poll or listen for completion
         const timer = setInterval(async () => {
             if (authWindow && authWindow.closed) {
                 clearInterval(timer);
-                await loadLinkedInAccounts();
+                await loadAllAccounts();
                 await loadPosts();
             }
         }, 1500);
@@ -250,12 +570,24 @@ async function startLinkedInOAuth() {
     }
 }
 
-async function disconnectAccount(accountId) {
+async function disconnectLinkedInAccount(accountId) {
     if (!confirm("Are you sure you want to disconnect this LinkedIn account?")) return;
     try {
         const res = await authFetch(`/linkedin/accounts/${accountId}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to disconnect");
-        await loadLinkedInAccounts();
+        await loadAllAccounts();
+        await loadPosts();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+async function disconnectSocialAccount(accountId, platform) {
+    if (!confirm(`Are you sure you want to disconnect this ${platform} account?`)) return;
+    try {
+        const res = await authFetch(`/social/accounts/${accountId}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Failed to disconnect");
+        await loadAllAccounts();
         await loadPosts();
     } catch (err) {
         alert(err.message);
@@ -273,17 +605,36 @@ async function handleLearningSubmit(event) {
     const spinner = document.getElementById("form-spinner");
     const submitBtn = document.getElementById("learning-submit-btn");
 
+    const topic = document.getElementById("topic").value.trim();
+    const category = document.getElementById("category").value.trim();
+    const what_i_learned = document.getElementById("what_i_learned").value.trim();
+    const problem = document.getElementById("problem").value.trim();
+    const project = document.getElementById("project").value.trim();
+    const lesson = document.getElementById("lesson").value.trim();
+
+    // Validation checks for blanks
+    let hasError = false;
+    if (!topic) { setFieldError("topic", "Topic cannot be blank."); hasError = true; } else { clearFieldError("topic"); }
+    if (!category) { setFieldError("category", "Category cannot be blank."); hasError = true; } else { clearFieldError("category"); }
+    if (!what_i_learned) { setFieldError("what_i_learned", "What You Learned cannot be blank."); hasError = true; } else { clearFieldError("what_i_learned"); }
+
+    if (hasError) {
+        msg.style.color = "var(--danger)";
+        msg.textContent = "Please fill in all required fields.";
+        return;
+    }
+
     msg.textContent = "";
     spinner.style.display = "inline-block";
     submitBtn.disabled = true;
 
     const payload = {
-        topic: document.getElementById("topic").value.trim(),
-        category: document.getElementById("category").value.trim(),
-        problem: document.getElementById("problem").value.trim() || null,
-        what_i_learned: document.getElementById("what_i_learned").value.trim(),
-        project: document.getElementById("project").value.trim() || null,
-        lesson: document.getElementById("lesson").value.trim() || null
+        topic,
+        category,
+        problem: problem || null,
+        what_i_learned,
+        project: project || null,
+        lesson: lesson || null
     };
 
     try {
@@ -301,7 +652,7 @@ async function handleLearningSubmit(event) {
         if (!genRes.ok) throw new Error(post.detail || "Failed to generate AI post");
 
         msg.style.color = "var(--success)";
-        msg.textContent = "Learning saved and AI LinkedIn draft generated successfully!";
+        msg.textContent = "Learning saved and AI draft generated successfully!";
         form.reset();
 
         await loadLearnings();
@@ -348,7 +699,7 @@ async function loadLearnings() {
             container.appendChild(card);
         });
     } catch (err) {
-        container.innerHTML = `<p class="empty-text">${err.message}</p>`;
+        container.innerHTML = `<p class="empty-text">${escapeHtml(err.message)}</p>`;
     }
 }
 
@@ -377,7 +728,7 @@ async function deleteLearning(learningId) {
 }
 
 /* =============================================================
-   POSTS & PUBLICATIONS
+   POSTS & MULTI-PLATFORM PUBLICATIONS
    ============================================================= */
 
 async function loadPosts() {
@@ -411,21 +762,42 @@ async function loadPosts() {
             if (post.status === "published") statusClass = "status-published";
             else if (post.status === "scheduled") statusClass = "status-scheduled";
 
-            let accountOptions = connectedAccounts.map(
+            // Destination options for each platform
+            const fbAccounts = connectedSocialAccounts.filter(a => a.platform === "facebook");
+            const igAccounts = connectedSocialAccounts.filter(a => a.platform === "instagram");
+
+            const hasLinkedIn = connectedLinkedInAccounts.length > 0;
+            const hasFacebook = fbAccounts.length > 0;
+            const hasInstagram = igAccounts.length > 0;
+            const hasAnyPlatform = hasLinkedIn || hasFacebook || hasInstagram;
+
+            const liOptions = connectedLinkedInAccounts.map(
                 acc => `<option value="${acc.id}">${escapeHtml(acc.name)}</option>`
+            ).join("");
+
+            const fbOptions = fbAccounts.map(
+                acc => `<option value="${acc.id}">${escapeHtml(acc.name)}</option>`
+            ).join("");
+
+            const igOptions = igAccounts.map(
+                acc => `<option value="${acc.id}">${escapeHtml(acc.name)} (${escapeHtml(acc.account_identifier)})</option>`
             ).join("");
 
             let pubDetailsHtml = "";
             if (postPubs.length > 0) {
-                pubDetailsHtml = `<div style="margin-top: 10px; font-size: 0.8rem; background: #fafafa; padding: 8px; border-radius: 6px;">
-                    <strong>Publications:</strong>
-                    ${postPubs.map(p => `
-                        <div style="margin-top: 4px;">
-                            • Status: <span class="status-pill status-${p.status}">${p.status}</span>
-                            ${p.linkedin_post_urn ? `URN: <code>${p.linkedin_post_urn}</code>` : ""}
+                pubDetailsHtml = `<div style="margin-top: 10px; font-size: 0.8rem; background: #fafafa; padding: 10px; border-radius: 6px; border: 1px solid #eee;">
+                    <strong>Published Destinations:</strong>
+                    ${postPubs.map(p => {
+                        let platTag = `<span class="platform-tag tag-${p.platform || 'linkedin'}">${p.platform || 'linkedin'}</span>`;
+                        let idStr = p.remote_post_id || p.linkedin_post_urn;
+                        return `
+                        <div style="margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            ${platTag}
+                            <span class="status-pill status-${p.status}">${p.status}</span>
+                            ${idStr ? `<code>${escapeHtml(idStr)}</code>` : ""}
                             ${p.error_message ? `<span style="color: var(--danger);">${escapeHtml(p.error_message)}</span>` : ""}
-                        </div>
-                    `).join("")}
+                        </div>`;
+                    }).join("")}
                 </div>`;
             }
 
@@ -434,6 +806,47 @@ async function loadPosts() {
                     <img src="${API_URL}${post.image_url}" class="post-media-img" alt="Attached post image" />
                 </div>
             ` : '';
+
+            // Destination Picker HTML
+            let destinationPickerHtml = `
+                <div class="destination-picker-box">
+                    <div class="destination-picker-title">
+                        <span>🎯 Pick Where to Post To:</span>
+                    </div>
+                    <div class="destinations-row">
+                        <div class="destination-item">
+                            <input type="checkbox" id="dest-li-${post.id}" ${hasLinkedIn ? "checked" : "disabled"}>
+                            <span class="platform-tag tag-linkedin">LinkedIn</span>
+                            ${hasLinkedIn
+                                ? `<select id="acc-li-${post.id}" class="destination-select">${liOptions}</select>`
+                                : `<span style="font-size: 0.78rem; color: var(--text-secondary);">(Connect LinkedIn above)</span>`
+                            }
+                        </div>
+
+                        <div class="destination-item">
+                            <input type="checkbox" id="dest-fb-${post.id}" ${hasFacebook ? "" : "disabled"}>
+                            <span class="platform-tag tag-facebook">Facebook</span>
+                            ${hasFacebook
+                                ? `<select id="acc-fb-${post.id}" class="destination-select">${fbOptions}</select>`
+                                : `<span style="font-size: 0.78rem; color: var(--text-secondary);">(Connect Facebook above)</span>`
+                            }
+                        </div>
+
+                        <div class="destination-item">
+                            <input type="checkbox" id="dest-ig-${post.id}" ${hasInstagram ? "" : "disabled"} onchange="validateInstagramPick(${post.id}, this)">
+                            <span class="platform-tag tag-instagram">Instagram</span>
+                            ${hasInstagram
+                                ? `<select id="acc-ig-${post.id}" class="destination-select">${igOptions}</select>`
+                                : `<span style="font-size: 0.78rem; color: var(--text-secondary);">(Connect Instagram above)</span>`
+                            }
+                            ${post.image_url
+                                ? `<span class="ig-ready-badge">📷 Ready</span>`
+                                : `<span class="ig-warning-badge" id="ig-warn-${post.id}">⚠️ Image required</span>`
+                            }
+                        </div>
+                    </div>
+                </div>
+            `;
 
             card.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -467,19 +880,22 @@ async function loadPosts() {
 
                 ${pubDetailsHtml}
 
+                ${destinationPickerHtml}
+
                 <div class="item-actions">
-                    ${connectedAccounts.length > 0 ? `
-                        <select id="acc-select-${post.id}" style="width: auto; padding: 4px 8px; font-size: 0.8rem;">
-                            ${accountOptions}
-                        </select>
-                        <button class="btn btn-primary btn-sm" onclick="publishPostNow(${post.id})">Publish to LinkedIn</button>
-                        <button class="btn btn-secondary btn-sm" onclick="toggleScheduleInput(${post.id})">Schedule</button>
-                    ` : `<span style="font-size: 0.8rem; color: var(--text-secondary);">Connect a LinkedIn account above to publish</span>`}
+                    ${hasAnyPlatform ? `
+                        <button class="btn btn-primary btn-sm" onclick="publishSelectedDestinations(${post.id}, ${Boolean(post.image_url)})">
+                            🚀 Publish to Selected
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="toggleScheduleInput(${post.id})">
+                            📅 Schedule
+                        </button>
+                    ` : `<span style="font-size: 0.8rem; color: var(--text-secondary);">Connect at least one account above to publish</span>`}
                     <button class="btn btn-danger btn-sm" style="margin-left: auto;" onclick="deletePost(${post.id})">Delete</button>
                 </div>
 
                 <div id="schedule-box-${post.id}" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ddd;">
-                    <label style="font-size: 0.8rem;">Select publication date & time:</label>
+                    <label style="font-size: 0.8rem;">Select publication date & time (LinkedIn schedule):</label>
                     <input type="datetime-local" id="schedule-time-${post.id}" style="width: auto; margin-right: 8px;">
                     <button class="btn btn-primary btn-sm" onclick="schedulePostNow(${post.id})">Confirm Schedule</button>
                 </div>
@@ -487,7 +903,83 @@ async function loadPosts() {
             container.appendChild(card);
         });
     } catch (err) {
-        container.innerHTML = `<p class="empty-text">${err.message}</p>`;
+        container.innerHTML = `<p class="empty-text">${escapeHtml(err.message)}</p>`;
+    }
+}
+
+function validateInstagramPick(postId, checkbox) {
+    if (checkbox.checked) {
+        const warnBadge = document.getElementById(`ig-warn-${postId}`);
+        if (warnBadge) {
+            alert("⚠️ Instagram Notice: Instagram requires an image attachment. Please ensure you attach an image to this post before publishing, or Instagram publication will fail.");
+        }
+    }
+}
+
+async function publishSelectedDestinations(postId, hasImage) {
+    const checkLi = document.getElementById(`dest-li-${postId}`);
+    const checkFb = document.getElementById(`dest-fb-${postId}`);
+    const checkIg = document.getElementById(`dest-ig-${postId}`);
+
+    const destinations = [];
+
+    if (checkLi && checkLi.checked) {
+        const sel = document.getElementById(`acc-li-${postId}`);
+        if (!sel || !sel.value) {
+            alert("Please select a LinkedIn account for the LinkedIn destination.");
+            return;
+        }
+        destinations.push({ platform: "linkedin", account_id: parseInt(sel.value) });
+    }
+
+    if (checkFb && checkFb.checked) {
+        const sel = document.getElementById(`acc-fb-${postId}`);
+        if (!sel || !sel.value) {
+            alert("Please select a Facebook page for the Facebook destination.");
+            return;
+        }
+        destinations.push({ platform: "facebook", account_id: parseInt(sel.value) });
+    }
+
+    if (checkIg && checkIg.checked) {
+        if (!hasImage) {
+            alert("Instagram requires an image attachment. Please attach an image above before publishing to Instagram.");
+            return;
+        }
+        const sel = document.getElementById(`acc-ig-${postId}`);
+        if (!sel || !sel.value) {
+            alert("Please select an Instagram account for the Instagram destination.");
+            return;
+        }
+        destinations.push({ platform: "instagram", account_id: parseInt(sel.value) });
+    }
+
+    if (destinations.length === 0) {
+        alert("Please select at least one platform (LinkedIn, Facebook, or Instagram) to publish to.");
+        return;
+    }
+
+    try {
+        const res = await authFetch("/publications/publish-multi", {
+            method: "POST",
+            body: JSON.stringify({
+                post_id: postId,
+                destinations
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Publication failed");
+
+        const publishedCount = data.filter(d => d.status === "published").length;
+        const failedCount = data.filter(d => d.status === "failed").length;
+
+        let alertMsg = `Publication complete! Published: ${publishedCount}`;
+        if (failedCount > 0) alertMsg += `, Failed: ${failedCount}`;
+        alert(alertMsg);
+
+        await loadPosts();
+    } catch (err) {
+        alert("Publish error: " + err.message);
     }
 }
 
@@ -514,7 +1006,7 @@ async function saveEditPost(postId) {
     if (!textarea) return;
     const newContent = textarea.value.trim();
     if (!newContent) {
-        alert("Post content cannot be empty.");
+        alert("Post content cannot be blank or contain only spaces.");
         return;
     }
 
@@ -549,29 +1041,6 @@ async function uploadPostImage(postId, file) {
     }
 }
 
-async function publishPostNow(postId) {
-    const select = document.getElementById(`acc-select-${postId}`);
-    if (!select) return;
-    const accountId = parseInt(select.value);
-
-    try {
-        const res = await authFetch("/publications/publish", {
-            method: "POST",
-            body: JSON.stringify({
-                post_id: postId,
-                linkedin_account_id: accountId
-            })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Publication failed");
-
-        alert("Post publication submitted! Status: " + data.status);
-        await loadPosts();
-    } catch (err) {
-        alert("Publish error: " + err.message);
-    }
-}
-
 function toggleScheduleInput(postId) {
     const box = document.getElementById(`schedule-box-${postId}`);
     if (box) {
@@ -580,14 +1049,20 @@ function toggleScheduleInput(postId) {
 }
 
 async function schedulePostNow(postId) {
-    const select = document.getElementById(`acc-select-${postId}`);
+    const checkLi = document.getElementById(`dest-li-${postId}`);
+    const sel = document.getElementById(`acc-li-${postId}`);
     const timeInput = document.getElementById(`schedule-time-${postId}`);
-    if (!select || !timeInput || !timeInput.value) {
+
+    if (!checkLi || !checkLi.checked || !sel || !sel.value) {
+        alert("Please ensure LinkedIn is selected with a connected account to schedule.");
+        return;
+    }
+    if (!timeInput || !timeInput.value) {
         alert("Please select a future date and time.");
         return;
     }
 
-    const accountId = parseInt(select.value);
+    const accountId = parseInt(sel.value);
     const scheduledAt = new Date(timeInput.value).toISOString();
 
     try {
@@ -626,7 +1101,7 @@ async function deletePost(postId) {
 
 function escapeHtml(text) {
     if (!text) return "";
-    return text
+    return String(text)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
@@ -636,10 +1111,17 @@ function escapeHtml(text) {
 
 async function loadAllData() {
     await Promise.all([
-        loadLinkedInAccounts(),
+        loadAllAccounts(),
         loadLearnings(),
         loadPosts()
     ]);
+}
+
+// Attach live validation listeners once DOM is ready
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setupInputLiveValidation);
+} else {
+    setupInputLiveValidation();
 }
 
 // Initial session check on load

@@ -7,7 +7,9 @@ from app.models.user import User
 from app.repositories.linkedin_account import LinkedInAccountRepository
 from app.repositories.post import PostRepository
 from app.repositories.publication import PublicationRepository
+from app.repositories.social_account import SocialAccountRepository
 from app.schemas.linkedin import PublicationCreate, PublicationResponse
+from app.schemas.social import MultiPublishRequest
 from app.services.publication import PublicationService
 
 router = APIRouter(prefix="/publications", tags=["Publications"])
@@ -22,7 +24,8 @@ def publish_post_now(
     pub_repo = PublicationRepository(db)
     post_repo = PostRepository(db)
     account_repo = LinkedInAccountRepository(db)
-    service = PublicationService(pub_repo, post_repo, account_repo)
+    social_repo = SocialAccountRepository(db)
+    service = PublicationService(pub_repo, post_repo, account_repo, social_account_repo=social_repo)
 
     try:
         pub = service.publish_post(
@@ -31,6 +34,35 @@ def publish_post_now(
             linkedin_account_id=data.linkedin_account_id
         )
         return pub
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.post("/publish-multi", response_model=list[PublicationResponse])
+def publish_multi_destinations(
+    data: MultiPublishRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Publishes a post to one or more user-selected destination platforms (LinkedIn, Facebook, Instagram).
+    """
+    pub_repo = PublicationRepository(db)
+    post_repo = PostRepository(db)
+    account_repo = LinkedInAccountRepository(db)
+    social_repo = SocialAccountRepository(db)
+    service = PublicationService(pub_repo, post_repo, account_repo, social_account_repo=social_repo)
+
+    try:
+        pubs = service.publish_multi_destinations(
+            user_id=current_user.id,
+            post_id=data.post_id,
+            destinations=data.destinations
+        )
+        return pubs
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -53,7 +85,8 @@ def schedule_post_publication(
     pub_repo = PublicationRepository(db)
     post_repo = PostRepository(db)
     account_repo = LinkedInAccountRepository(db)
-    service = PublicationService(pub_repo, post_repo, account_repo)
+    social_repo = SocialAccountRepository(db)
+    service = PublicationService(pub_repo, post_repo, account_repo, social_account_repo=social_repo)
 
     try:
         pub = service.schedule_post(
@@ -78,7 +111,8 @@ def get_user_publications(
     pub_repo = PublicationRepository(db)
     post_repo = PostRepository(db)
     account_repo = LinkedInAccountRepository(db)
-    service = PublicationService(pub_repo, post_repo, account_repo)
+    social_repo = SocialAccountRepository(db)
+    service = PublicationService(pub_repo, post_repo, account_repo, social_account_repo=social_repo)
     return service.get_user_publications(current_user.id)
 
 
@@ -91,7 +125,8 @@ def get_publication_by_id(
     pub_repo = PublicationRepository(db)
     post_repo = PostRepository(db)
     account_repo = LinkedInAccountRepository(db)
-    service = PublicationService(pub_repo, post_repo, account_repo)
+    social_repo = SocialAccountRepository(db)
+    service = PublicationService(pub_repo, post_repo, account_repo, social_account_repo=social_repo)
 
     pub = service.get_publication(current_user.id, publication_id)
     if not pub:

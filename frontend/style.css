@@ -1,6 +1,9 @@
 :root {
     --primary: #0a66c2;
     --primary-hover: #084e96;
+    --facebook: #1877f2;
+    --facebook-hover: #1464cc;
+    --instagram-grad: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
     --success: #057642;
     --danger: #cc1016;
     --warning: #b25e00;
@@ -111,6 +114,8 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 /* Forms */
@@ -144,7 +149,7 @@ textarea {
     border-radius: 6px;
     font-size: 0.9rem;
     font-family: inherit;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 input:focus,
@@ -153,6 +158,29 @@ textarea:focus {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 0 2px rgba(10, 102, 194, 0.2);
+}
+
+/* Validation Error Styles */
+input.input-error,
+textarea.input-error,
+select.input-error {
+    border-color: var(--danger) !important;
+    background-color: #fff9f9;
+}
+
+input.input-error:focus,
+textarea.input-error:focus,
+select.input-error:focus {
+    box-shadow: 0 0 0 2px rgba(204, 16, 22, 0.2) !important;
+}
+
+.field-error {
+    display: block;
+    color: var(--danger);
+    font-size: 0.78rem;
+    font-weight: 500;
+    margin-top: 4px;
+    min-height: 16px;
 }
 
 /* Buttons */
@@ -166,8 +194,12 @@ textarea:focus {
     border-radius: 20px;
     cursor: pointer;
     border: none;
-    transition: background-color 0.2s, opacity 0.2s;
+    transition: background-color 0.2s, opacity 0.2s, transform 0.1s;
     text-decoration: none;
+}
+
+.btn:active {
+    transform: scale(0.98);
 }
 
 .btn-primary {
@@ -186,6 +218,24 @@ textarea:focus {
 
 .btn-linkedin:hover {
     background-color: #084e96;
+}
+
+.btn-facebook {
+    background-color: var(--facebook);
+    color: #ffffff;
+}
+
+.btn-facebook:hover {
+    background-color: var(--facebook-hover);
+}
+
+.btn-instagram {
+    background: var(--instagram-grad);
+    color: #ffffff;
+}
+
+.btn-instagram:hover {
+    opacity: 0.9;
 }
 
 .btn-secondary {
@@ -209,7 +259,7 @@ textarea:focus {
 }
 
 .btn-sm {
-    padding: 5px 12px;
+    padding: 6px 14px;
     font-size: 0.8rem;
     border-radius: 14px;
 }
@@ -246,6 +296,94 @@ textarea:focus {
 .tab-btn.active {
     color: var(--primary);
     border-bottom-color: var(--primary);
+}
+
+/* Accounts Management */
+.account-actions-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.account-filter-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+}
+
+.filter-tab {
+    background: none;
+    border: 1px solid transparent;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 14px;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.filter-tab.active {
+    background: #e8f3fc;
+    color: var(--primary);
+    border-color: #cbe3f8;
+}
+
+.accounts-grid {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.account-pill {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    min-width: 250px;
+}
+
+.account-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.avatar-linkedin { background-color: #0a66c2; }
+.avatar-facebook { background-color: var(--facebook); }
+.avatar-instagram { background: var(--instagram-grad); }
+
+.account-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.account-info h4 {
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.account-info p {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Two Column Layout */
@@ -312,6 +450,85 @@ textarea:focus {
     white-space: pre-wrap;
 }
 
+/* Destination Picker Box inside Post Cards */
+.destination-picker-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 12px 0;
+}
+
+.destination-picker-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.destinations-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.destination-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #ffffff;
+    border: 1px solid #edf2f7;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+}
+
+.destination-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.platform-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.tag-linkedin { background: #e8f3fc; color: #0a66c2; }
+.tag-facebook { background: #e7f3ff; color: #1877f2; }
+.tag-instagram { background: #fdf0f5; color: #cc2366; }
+
+.destination-select {
+    width: auto;
+    max-width: 200px;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    border-radius: 4px;
+}
+
+.ig-warning-badge {
+    color: var(--warning);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.ig-ready-badge {
+    color: var(--success);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: auto;
+}
+
 .item-actions {
     display: flex;
     align-items: center;
@@ -329,7 +546,6 @@ textarea:focus {
     text-transform: uppercase;
     padding: 2px 8px;
     border-radius: 10px;
-    margin-bottom: 8px;
 }
 
 .status-draft { background: #e0e0e0; color: #555; }
@@ -337,46 +553,6 @@ textarea:focus {
 .status-scheduled { background: #e8daef; color: #6c3483; }
 .status-processing { background: #fff3cd; color: #856404; }
 .status-failed { background: #f8d7da; color: var(--danger); }
-
-/* LinkedIn Accounts List */
-.accounts-grid {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-}
-
-.account-pill {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: #f8fafc;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 10px 16px;
-}
-
-.account-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--primary);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 0.9rem;
-}
-
-.account-info h4 {
-    font-size: 0.95rem;
-    margin-bottom: 2px;
-}
-
-.account-info p {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-}
 
 .message-banner {
     margin-top: 12px;
@@ -451,7 +627,6 @@ textarea:focus {
     margin-top: 8px;
 }
 
-/* File input styling */
 .btn-upload-label {
     display: inline-flex;
     align-items: center;
@@ -461,4 +636,62 @@ textarea:focus {
 
 .btn-upload-label input[type="file"] {
     display: none;
+}
+
+/* Modal Dialogs */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+}
+
+.modal-card {
+    background: #ffffff;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 480px;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 12px;
+}
+
+.modal-header h3 {
+    font-size: 1.15rem;
+    color: var(--text-primary);
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    line-height: 1;
+}
+
+.modal-close-btn:hover {
+    color: var(--text-primary);
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
 }
