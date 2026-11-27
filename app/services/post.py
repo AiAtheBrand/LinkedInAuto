@@ -49,15 +49,18 @@ class PostService:
         user_id: int,
         post_id: int,
         content: str,
-        image_url: str | None = None
+        image_url: str | None = None,
+        image_urls: list[str] | None = None
     ) -> Post | None:
         post = self.post_repository.get_by_id(post_id, user_id)
         if not post:
             return None
 
         post.content = content
-        if image_url is not None:
-            post.image_url = image_url if image_url != "" else None
+        if image_urls is not None:
+            post.set_image_urls(image_urls)
+        elif image_url is not None:
+            post.set_image_urls([image_url] if image_url != "" else [])
 
         return self.post_repository.update(post)
 
@@ -66,8 +69,36 @@ class PostService:
         if not post:
             return None
 
-        post.image_url = image_url
+        images = post.get_image_urls()
+        if image_url not in images:
+            images.append(image_url)
+        post.set_image_urls(images)
         return self.post_repository.update(post)
+
+    def attach_images_to_post(self, user_id: int, post_id: int, new_image_urls: list[str]) -> Post | None:
+        post = self.post_repository.get_by_id(post_id, user_id)
+        if not post:
+            return None
+
+        images = post.get_image_urls()
+        for url in new_image_urls:
+            if url not in images:
+                images.append(url)
+        post.set_image_urls(images)
+        return self.post_repository.update(post)
+
+    def delete_post_image(self, user_id: int, post_id: int, image_index: int) -> Post | None:
+        post = self.post_repository.get_by_id(post_id, user_id)
+        if not post:
+            return None
+
+        images = post.get_image_urls()
+        if 0 <= image_index < len(images):
+            images.pop(image_index)
+            post.set_image_urls(images)
+            return self.post_repository.update(post)
+
+        return None
 
     def delete_post(self, user_id: int, post_id: int) -> bool:
         post = self.post_repository.get_by_id(post_id, user_id)

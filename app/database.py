@@ -132,6 +132,17 @@ def migrate_db_schema(eng):
                     )
                 )
 
+            if "image_urls" not in columns:
+                print(
+                    "[MIGRATION] Adding image_urls to posts table..."
+                )
+                conn.execute(
+                    text(
+                        "ALTER TABLE posts "
+                        "ADD COLUMN image_urls TEXT NULL"
+                    )
+                )
+
         # Update publications table
         if "publications" in existing_tables:
             columns = {

@@ -33,6 +33,12 @@ htmlcov/
 *.log
 logs/
 
+# Media uploads (ignore test artifacts while preserving seeded assets)
+uploads/media/*
+!uploads/media/51996790cdf24fb282cd2e382309bdaf.png
+!uploads/media/7c00b294bea547fc8fcf41470d050a9b.jpg
+!uploads/media/8f78b2df75b54a7bb68ce17ec443cb01.png
+
 # OS files
 .DS_Store
 Thumbs.db

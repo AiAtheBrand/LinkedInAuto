@@ -11,6 +11,43 @@ let currentAccountFilter = "all";
 let authMode = "login"; // 'login' or 'register'
 
 /* =============================================================
+   ERROR FORMATTING HELPER (PREVENTS [object Object])
+   ============================================================= */
+
+function getErrorMessage(error, fallback = "An unexpected error occurred.") {
+    if (!error) return fallback;
+    if (typeof error === "string") return error;
+
+    // FastAPI 422 validation errors: array of error dicts
+    if (Array.isArray(error)) {
+        return error.map(e => {
+            if (typeof e === "string") return e;
+            if (e && e.msg) {
+                const loc = Array.isArray(e.loc) ? e.loc.filter(l => l !== "body").join(".") : "";
+                return loc ? `${loc}: ${e.msg}` : e.msg;
+            }
+            return JSON.stringify(e);
+        }).join("; ");
+    }
+
+    if (typeof error === "object") {
+        if (error.detail) {
+            return getErrorMessage(error.detail, fallback);
+        }
+        if (error.message) return String(error.message);
+        if (error.msg) return String(error.msg);
+        if (error.error) return typeof error.error === "object" ? getErrorMessage(error.error, fallback) : String(error.error);
+        try {
+            return JSON.stringify(error);
+        } catch {
+            return fallback;
+        }
+    }
+
+    return String(error);
+}
+
+/* =============================================================
    FORM VALIDATION HELPERS
    ============================================================= */
 
@@ -253,8 +290,7 @@ async function handleAuthSubmit(event) {
             });
             const data = await res.json();
             if (!res.ok) {
-                const detail = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
-                throw new Error(detail || "Registration failed");
+                throw new Error(getErrorMessage(data, "Registration failed"));
             }
 
             // Auto-login after registration
@@ -264,7 +300,7 @@ async function handleAuthSubmit(event) {
                 body: JSON.stringify({ email, password })
             });
             const loginData = await loginRes.json();
-            if (!loginRes.ok) throw new Error(loginData.detail || "Login failed");
+            if (!loginRes.ok) throw new Error(getErrorMessage(loginData, "Login failed"));
 
             setToken(loginData.access_token);
             currentUser = loginData.user;
@@ -276,8 +312,7 @@ async function handleAuthSubmit(event) {
             });
             const data = await res.json();
             if (!res.ok) {
-                const detail = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
-                throw new Error(detail || "Invalid credentials");
+                throw new Error(getErrorMessage(data, "Invalid credentials"));
             }
 
             setToken(data.access_token);
@@ -288,7 +323,7 @@ async function handleAuthSubmit(event) {
         loadAllData();
     } catch (err) {
         msg.style.color = "var(--danger)";
-        msg.textContent = err.message;
+        msg.textContent = getErrorMessage(err.message);
     } finally {
         submitBtn.disabled = false;
     }
@@ -372,7 +407,7 @@ async function loadAllAccounts() {
         renderSocialAccounts();
     } catch (err) {
         const listEl = document.getElementById("social-accounts-list");
-        if (listEl) listEl.innerHTML = `<p class="empty-text">${escapeHtml(err.message)}</p>`;
+        if (listEl) listEl.innerHTML = `<p class="empty-text">${escapeHtml(getErrorMessage(err.message))}</p>`;
     }
 }
 
@@ -482,14 +517,14 @@ async function handleConnectFacebook(event) {
             })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Failed to connect Facebook page");
+        if (!res.ok) throw new Error(getErrorMessage(data, "Failed to connect Facebook page"));
 
         closeConnectModal("facebook");
         await loadAllAccounts();
         await loadPosts();
     } catch (err) {
         msg.style.color = "var(--danger)";
-        msg.textContent = err.message;
+        msg.textContent = getErrorMessage(err.message);
     } finally {
         btn.disabled = false;
     }
@@ -537,14 +572,14 @@ async function handleConnectInstagram(event) {
             })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Failed to connect Instagram account");
+        if (!res.ok) throw new Error(getErrorMessage(data, "Failed to connect Instagram account"));
 
         closeConnectModal("instagram");
         await loadAllAccounts();
         await loadPosts();
     } catch (err) {
         msg.style.color = "var(--danger)";
-        msg.textContent = err.message;
+        msg.textContent = getErrorMessage(err.message);
     } finally {
         btn.disabled = false;
     }
@@ -553,7 +588,10 @@ async function handleConnectInstagram(event) {
 async function startLinkedInOAuth() {
     try {
         const res = await authFetch("/linkedin/oauth/authorize");
-        if (!res.ok) throw new Error("Failed to start OAuth");
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(getErrorMessage(data, "Failed to start OAuth"));
+        }
         const data = await res.json();
 
         const authWindow = window.open(data.authorization_url, "_blank", "width=600,height=700");
@@ -566,7 +604,7 @@ async function startLinkedInOAuth() {
             }
         }, 1500);
     } catch (err) {
-        alert("OAuth initiation failed: " + err.message);
+        alert("OAuth initiation failed: " + getErrorMessage(err.message));
     }
 }
 
@@ -574,11 +612,14 @@ async function disconnectLinkedInAccount(accountId) {
     if (!confirm("Are you sure you want to disconnect this LinkedIn account?")) return;
     try {
         const res = await authFetch(`/linkedin/accounts/${accountId}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to disconnect");
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(getErrorMessage(data, "Failed to disconnect"));
+        }
         await loadAllAccounts();
         await loadPosts();
     } catch (err) {
-        alert(err.message);
+        alert(getErrorMessage(err.message));
     }
 }
 
@@ -586,11 +627,14 @@ async function disconnectSocialAccount(accountId, platform) {
     if (!confirm(`Are you sure you want to disconnect this ${platform} account?`)) return;
     try {
         const res = await authFetch(`/social/accounts/${accountId}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to disconnect");
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(getErrorMessage(data, "Failed to disconnect"));
+        }
         await loadAllAccounts();
         await loadPosts();
     } catch (err) {
-        alert(err.message);
+        alert(getErrorMessage(err.message));
     }
 }
 
@@ -638,18 +682,22 @@ async function handleLearningSubmit(event) {
     };
 
     try {
-        // 1. Save Learning
+        // 1. Save Learning Note
         const createRes = await authFetch("/learning/", {
             method: "POST",
             body: JSON.stringify(payload)
         });
         const createdLearning = await createRes.json();
-        if (!createRes.ok) throw new Error(createdLearning.detail || "Failed to save learning note");
+        if (!createRes.ok) {
+            throw new Error(getErrorMessage(createdLearning, "Failed to save learning note"));
+        }
 
         // 2. Generate Post via AI
         const genRes = await authFetch(`/posts/generate/${createdLearning.id}`, { method: "POST" });
         const post = await genRes.json();
-        if (!genRes.ok) throw new Error(post.detail || "Failed to generate AI post");
+        if (!genRes.ok) {
+            throw new Error(getErrorMessage(post, "AI post generation failed. Please click 'Generate Post' to retry."));
+        }
 
         msg.style.color = "var(--success)";
         msg.textContent = "Learning saved and AI draft generated successfully!";
@@ -659,7 +707,7 @@ async function handleLearningSubmit(event) {
         await loadPosts();
     } catch (err) {
         msg.style.color = "var(--danger)";
-        msg.textContent = err.message;
+        msg.textContent = getErrorMessage(err.message);
     } finally {
         spinner.style.display = "none";
         submitBtn.disabled = false;
@@ -672,7 +720,10 @@ async function loadLearnings() {
 
     try {
         const res = await authFetch("/learning/");
-        if (!res.ok) throw new Error("Failed to load learning entries");
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(getErrorMessage(data, "Failed to load learning entries"));
+        }
         const items = await res.json();
 
         countBadge.textContent = items.length;
@@ -699,20 +750,20 @@ async function loadLearnings() {
             container.appendChild(card);
         });
     } catch (err) {
-        container.innerHTML = `<p class="empty-text">${escapeHtml(err.message)}</p>`;
+        container.innerHTML = `<p class="empty-text">${escapeHtml(getErrorMessage(err.message))}</p>`;
     }
 }
 
 async function generateAdditionalPost(learningId) {
     try {
         const res = await authFetch(`/posts/generate/${learningId}`, { method: "POST" });
+        const data = await res.json();
         if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || "Generation failed");
+            throw new Error(getErrorMessage(data, "AI generation failed"));
         }
         await loadPosts();
     } catch (err) {
-        alert("Failed to generate post: " + err.message);
+        alert("Failed to generate post: " + getErrorMessage(err.message));
     }
 }
 
@@ -720,15 +771,18 @@ async function deleteLearning(learningId) {
     if (!confirm("Delete this learning entry? Associated draft posts will remain.")) return;
     try {
         const res = await authFetch(`/learning/${learningId}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Delete failed");
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(getErrorMessage(data, "Delete failed"));
+        }
         await loadLearnings();
     } catch (err) {
-        alert(err.message);
+        alert(getErrorMessage(err.message));
     }
 }
 
 /* =============================================================
-   POSTS & MULTI-PLATFORM PUBLICATIONS
+   POSTS & MULTI-IMAGE / MULTI-PLATFORM PUBLICATIONS
    ============================================================= */
 
 async function loadPosts() {
@@ -741,7 +795,10 @@ async function loadPosts() {
             authFetch("/publications/")
         ]);
 
-        if (!postsRes.ok) throw new Error("Failed to load posts");
+        if (!postsRes.ok) {
+            const data = await postsRes.json();
+            throw new Error(getErrorMessage(data, "Failed to load posts"));
+        }
         const posts = await postsRes.json();
         const publications = pubsRes.ok ? await pubsRes.json() : [];
 
@@ -761,6 +818,13 @@ async function loadPosts() {
             let statusClass = "status-draft";
             if (post.status === "published") statusClass = "status-published";
             else if (post.status === "scheduled") statusClass = "status-scheduled";
+
+            // Resolve list of images attached to this post
+            const images = (Array.isArray(post.image_urls) && post.image_urls.length > 0)
+                ? post.image_urls
+                : (post.image_url ? [post.image_url] : []);
+
+            const hasImages = images.length > 0;
 
             // Destination options for each platform
             const fbAccounts = connectedSocialAccounts.filter(a => a.platform === "facebook");
@@ -788,24 +852,39 @@ async function loadPosts() {
                 pubDetailsHtml = `<div style="margin-top: 10px; font-size: 0.8rem; background: #fafafa; padding: 10px; border-radius: 6px; border: 1px solid #eee;">
                     <strong>Published Destinations:</strong>
                     ${postPubs.map(p => {
-                        let platTag = `<span class="platform-tag tag-${p.platform || 'linkedin'}">${p.platform || 'linkedin'}</span>`;
-                        let idStr = p.remote_post_id || p.linkedin_post_urn;
-                        return `
+                    let platTag = `<span class="platform-tag tag-${p.platform || 'linkedin'}">${p.platform || 'linkedin'}</span>`;
+                    let idStr = p.remote_post_id || p.linkedin_post_urn;
+                    return `
                         <div style="margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                             ${platTag}
                             <span class="status-pill status-${p.status}">${p.status}</span>
                             ${idStr ? `<code>${escapeHtml(idStr)}</code>` : ""}
                             ${p.error_message ? `<span style="color: var(--danger);">${escapeHtml(p.error_message)}</span>` : ""}
                         </div>`;
-                    }).join("")}
+                }).join("")}
                 </div>`;
             }
 
-            const imageHtml = post.image_url ? `
-                <div class="post-media-container">
-                    <img src="${API_URL}${post.image_url}" class="post-media-img" alt="Attached post image" />
-                </div>
-            ` : '';
+            // Multi-Image Gallery HTML
+            let imageGalleryHtml = "";
+            if (images.length > 0) {
+                let gridClass = "grid-1";
+                if (images.length === 2) gridClass = "grid-2";
+                else if (images.length > 2) gridClass = "grid-many";
+
+                const thumbsHtml = images.map((imgUrl, idx) => `
+                    <div class="post-image-thumb-wrapper" title="Image ${idx + 1} of ${images.length}">
+                        <img src="${API_URL}${imgUrl}" class="post-image-thumb" alt="Post attachment ${idx + 1}" onclick="window.open('${API_URL}${imgUrl}', '_blank')" />
+                        <button type="button" class="btn-delete-img" title="Delete image" onclick="deletePostImage(${post.id}, ${idx})">&times;</button>
+                    </div>
+                `).join("");
+
+                imageGalleryHtml = `
+                    <div class="post-images-grid ${gridClass}">
+                        ${thumbsHtml}
+                    </div>
+                `;
+            }
 
             // Destination Picker HTML
             let destinationPickerHtml = `
@@ -839,8 +918,8 @@ async function loadPosts() {
                                 ? `<select id="acc-ig-${post.id}" class="destination-select">${igOptions}</select>`
                                 : `<span style="font-size: 0.78rem; color: var(--text-secondary);">(Connect Instagram above)</span>`
                             }
-                            ${post.image_url
-                                ? `<span class="ig-ready-badge">📷 Ready</span>`
+                            ${hasImages
+                                ? `<span class="ig-ready-badge">📷 Ready (${images.length} image${images.length > 1 ? "s" : ""})</span>`
                                 : `<span class="ig-warning-badge" id="ig-warn-${post.id}">⚠️ Image required</span>`
                             }
                         </div>
@@ -869,13 +948,15 @@ async function loadPosts() {
                     </div>
                 </div>
 
-                ${imageHtml}
+                ${imageGalleryHtml}
 
-                <div style="margin: 8px 0 12px 0;">
-                    <label class="btn btn-secondary btn-sm btn-upload-label">
-                        <span>📷 ${post.image_url ? "Change Image" : "Attach Image"}</span>
-                        <input type="file" accept="image/png, image/jpeg, image/gif, image/webp" onchange="uploadPostImage(${post.id}, this.files[0])" />
+                <div style="margin: 8px 0 12px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <label class="btn btn-secondary btn-sm btn-upload-label" id="upload-label-${post.id}">
+                        <span>📷 ${hasImages ? "+ Add More Images" : "Attach Image(s)"}</span>
+                        <input type="file" multiple accept="image/png, image/jpeg, image/gif, image/webp" onchange="uploadPostImages(${post.id}, this.files)" />
                     </label>
+                    <span class="spinner" id="upload-spinner-${post.id}" style="display: none;"></span>
+                    ${hasImages ? `<span class="image-badge-count">(${images.length} image${images.length > 1 ? "s" : ""} attached)</span>` : ""}
                 </div>
 
                 ${pubDetailsHtml}
@@ -884,7 +965,7 @@ async function loadPosts() {
 
                 <div class="item-actions">
                     ${hasAnyPlatform ? `
-                        <button class="btn btn-primary btn-sm" onclick="publishSelectedDestinations(${post.id}, ${Boolean(post.image_url)})">
+                        <button class="btn btn-primary btn-sm" onclick="publishSelectedDestinations(${post.id}, ${hasImages})">
                             🚀 Publish to Selected
                         </button>
                         <button class="btn btn-secondary btn-sm" onclick="toggleScheduleInput(${post.id})">
@@ -903,7 +984,7 @@ async function loadPosts() {
             container.appendChild(card);
         });
     } catch (err) {
-        container.innerHTML = `<p class="empty-text">${escapeHtml(err.message)}</p>`;
+        container.innerHTML = `<p class="empty-text">${escapeHtml(getErrorMessage(err.message))}</p>`;
     }
 }
 
@@ -911,12 +992,61 @@ function validateInstagramPick(postId, checkbox) {
     if (checkbox.checked) {
         const warnBadge = document.getElementById(`ig-warn-${postId}`);
         if (warnBadge) {
-            alert("⚠️ Instagram Notice: Instagram requires an image attachment. Please ensure you attach an image to this post before publishing, or Instagram publication will fail.");
+            alert("⚠️ Instagram Notice: Instagram requires an image attachment. Please attach one or more images before publishing to Instagram.");
         }
     }
 }
 
-async function publishSelectedDestinations(postId, hasImage) {
+async function uploadPostImages(postId, fileList) {
+    if (!fileList || fileList.length === 0) return;
+
+    const spinner = document.getElementById(`upload-spinner-${postId}`);
+    const label = document.getElementById(`upload-label-${postId}`);
+
+    if (spinner) spinner.style.display = "inline-block";
+    if (label) label.style.opacity = "0.5";
+
+    const formData = new FormData();
+    for (let i = 0; i < fileList.length; i++) {
+        formData.append("files", fileList[i]);
+    }
+
+    try {
+        const res = await authFetch(`/posts/${postId}/images`, {
+            method: "POST",
+            body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(getErrorMessage(data, "Image upload failed"));
+        }
+        await loadPosts();
+    } catch (err) {
+        alert("Upload error: " + getErrorMessage(err.message));
+    } finally {
+        if (spinner) spinner.style.display = "none";
+        if (label) label.style.opacity = "1";
+    }
+}
+
+async function deletePostImage(postId, imageIndex) {
+    if (!confirm("Are you sure you want to remove this image from the post?")) return;
+
+    try {
+        const res = await authFetch(`/posts/${postId}/images/${imageIndex}`, {
+            method: "DELETE"
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(getErrorMessage(data, "Failed to remove image"));
+        }
+        await loadPosts();
+    } catch (err) {
+        alert("Error removing image: " + getErrorMessage(err.message));
+    }
+}
+
+async function publishSelectedDestinations(postId, hasImages) {
     const checkLi = document.getElementById(`dest-li-${postId}`);
     const checkFb = document.getElementById(`dest-fb-${postId}`);
     const checkIg = document.getElementById(`dest-ig-${postId}`);
@@ -942,8 +1072,8 @@ async function publishSelectedDestinations(postId, hasImage) {
     }
 
     if (checkIg && checkIg.checked) {
-        if (!hasImage) {
-            alert("Instagram requires an image attachment. Please attach an image above before publishing to Instagram.");
+        if (!hasImages) {
+            alert("Instagram requires an image attachment. Please attach at least one image to your post before publishing to Instagram.");
             return;
         }
         const sel = document.getElementById(`acc-ig-${postId}`);
@@ -968,7 +1098,7 @@ async function publishSelectedDestinations(postId, hasImage) {
             })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Publication failed");
+        if (!res.ok) throw new Error(getErrorMessage(data, "Publication failed"));
 
         const publishedCount = data.filter(d => d.status === "published").length;
         const failedCount = data.filter(d => d.status === "failed").length;
@@ -979,7 +1109,7 @@ async function publishSelectedDestinations(postId, hasImage) {
 
         await loadPosts();
     } catch (err) {
-        alert("Publish error: " + err.message);
+        alert("Publish error: " + getErrorMessage(err.message));
     }
 }
 
@@ -1016,28 +1146,10 @@ async function saveEditPost(postId) {
             body: JSON.stringify({ content: newContent })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Failed to update post");
+        if (!res.ok) throw new Error(getErrorMessage(data, "Failed to update post"));
         await loadPosts();
     } catch (err) {
-        alert("Edit error: " + err.message);
-    }
-}
-
-async function uploadPostImage(postId, file) {
-    if (!file) return;
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-        const res = await authFetch(`/posts/${postId}/image`, {
-            method: "POST",
-            body: formData
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Image upload failed");
-        await loadPosts();
-    } catch (err) {
-        alert("Upload error: " + err.message);
+        alert("Edit error: " + getErrorMessage(err.message));
     }
 }
 
@@ -1075,12 +1187,12 @@ async function schedulePostNow(postId) {
             })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Scheduling failed");
+        if (!res.ok) throw new Error(getErrorMessage(data, "Scheduling failed"));
 
         alert("Post scheduled successfully for: " + new Date(scheduledAt).toLocaleString());
         await loadPosts();
     } catch (err) {
-        alert("Scheduling error: " + err.message);
+        alert("Scheduling error: " + getErrorMessage(err.message));
     }
 }
 
@@ -1088,10 +1200,13 @@ async function deletePost(postId) {
     if (!confirm("Are you sure you want to delete this draft?")) return;
     try {
         const res = await authFetch(`/posts/${postId}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Delete failed");
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(getErrorMessage(data, "Delete failed"));
+        }
         await loadPosts();
     } catch (err) {
-        alert(err.message);
+        alert(getErrorMessage(err.message));
     }
 }
 

@@ -1,250 +1,264 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Social Content Automation - LinkedIn, Facebook & Instagram</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-<header class="app-header">
-    <div class="header-container">
-        <div class="logo-area">
-            <h1>Social Content Automation</h1>
-            <span class="badge">Multi-Platform</span>
+    <header class="app-header">
+        <div class="header-container">
+            <div class="logo-area">
+                <h1>Content Automation</h1>
+                <span class="badge">Multi-Platform</span>
+            </div>
+            <div id="auth-header-area">
+                <!-- Populated dynamically: User Profile or Login/Register -->
+            </div>
         </div>
-        <div id="auth-header-area">
-            <!-- Populated dynamically: User Profile or Login/Register -->
-        </div>
-    </div>
-</header>
+    </header>
 
-<main class="main-container">
+    <main class="main-container">
 
-    <!-- Auth Modal / Card (Shown when logged out) -->
-    <section id="auth-section" class="card auth-card">
-        <h2>Welcome to Social Content Automation</h2>
-        <p class="subtitle">Sign in or create an account to manage your learning materials and publish across LinkedIn, Facebook, and Instagram.</p>
+        <!-- Auth Modal / Card (Shown when logged out) -->
+        <section id="auth-section" class="card auth-card">
+            <h2>Welcome to Social Content Automation</h2>
+            <p class="subtitle">Sign in or create an account to manage your learning materials and publish across
+                LinkedIn, Facebook, and Instagram.</p>
 
-        <div class="auth-tabs">
-            <button id="tab-login" class="tab-btn active" type="button" onclick="switchAuthTab('login')">Sign In</button>
-            <button id="tab-register" class="tab-btn" type="button" onclick="switchAuthTab('register')">Create Account</button>
-        </div>
-
-        <form id="auth-form" onsubmit="handleAuthSubmit(event)" novalidate>
-            <div id="auth-name-group" class="form-group" style="display: none;">
-                <label for="auth-fullname">Full Name</label>
-                <input type="text" id="auth-fullname" placeholder="e.g. Israel Adedokun" autocomplete="name">
-                <small class="field-error" id="auth-fullname-error"></small>
+            <div class="auth-tabs">
+                <button id="tab-login" class="tab-btn active" type="button" onclick="switchAuthTab('login')">Sign
+                    In</button>
+                <button id="tab-register" class="tab-btn" type="button" onclick="switchAuthTab('register')">Create
+                    Account</button>
             </div>
 
-            <div class="form-group">
-                <label for="auth-email">Email Address *</label>
-                <input type="email" id="auth-email" placeholder="you@example.com" required autocomplete="email">
-                <small class="field-error" id="auth-email-error"></small>
-            </div>
-
-            <div class="form-group">
-                <label for="auth-password">Password *</label>
-                <input type="password" id="auth-password" placeholder="Minimum 8 characters" required autocomplete="current-password">
-                <small class="field-error" id="auth-password-error"></small>
-            </div>
-
-            <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-block">Sign In</button>
-            <p id="auth-message" class="message-banner"></p>
-        </form>
-    </section>
-
-    <!-- Main App Container (Shown only when logged in) -->
-    <div id="app-workspace" style="display: none;">
-
-        <!-- Social Account Management Section -->
-        <section class="card social-accounts-card">
-            <div class="section-header">
-                <div>
-                    <h2>Connected Social Accounts</h2>
-                    <p class="subtitle" style="margin-bottom: 0;">Connect your destinations for LinkedIn, Facebook, and Instagram.</p>
-                </div>
-                <div class="account-actions-bar">
-                    <button id="connect-linkedin-btn" class="btn btn-linkedin btn-sm" onclick="startLinkedInOAuth()">
-                        + LinkedIn
-                    </button>
-                    <button class="btn btn-facebook btn-sm" onclick="openConnectModal('facebook')">
-                        + Facebook Page
-                    </button>
-                    <button class="btn btn-instagram btn-sm" onclick="openConnectModal('instagram')">
-                        + Instagram
-                    </button>
-                </div>
-            </div>
-
-            <div class="account-filter-tabs">
-                <button class="filter-tab active" onclick="filterAccountsTab('all', this)">All Platforms</button>
-                <button class="filter-tab" onclick="filterAccountsTab('linkedin', this)">LinkedIn</button>
-                <button class="filter-tab" onclick="filterAccountsTab('facebook', this)">Facebook</button>
-                <button class="filter-tab" onclick="filterAccountsTab('instagram', this)">Instagram</button>
-            </div>
-
-            <div id="social-accounts-list" class="accounts-grid">
-                <p class="empty-text">Loading connected accounts...</p>
-            </div>
-        </section>
-
-        <!-- Create Learning Form -->
-        <section class="card">
-            <h2>Log Your Technical Learning</h2>
-            <p class="subtitle">Document what you learned today. Our AI will transform it into an authentic, high-engagement draft ready for publishing.</p>
-
-            <form id="learning-form" onsubmit="handleLearningSubmit(event)" novalidate>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="topic">Topic *</label>
-                        <input type="text" id="topic" placeholder="e.g. FastAPI Dependency Injection" required>
-                        <small class="field-error" id="topic-error"></small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="category">Category *</label>
-                        <input type="text" id="category" placeholder="e.g. Backend Development" required>
-                        <small class="field-error" id="category-error"></small>
-                    </div>
+            <form id="auth-form" onsubmit="handleAuthSubmit(event)" novalidate>
+                <div id="auth-name-group" class="form-group" style="display: none;">
+                    <label for="auth-fullname">Full Name</label>
+                    <input type="text" id="auth-fullname" placeholder="e.g. Israel Adedokun" autocomplete="name">
+                    <small class="field-error" id="auth-fullname-error"></small>
                 </div>
 
                 <div class="form-group">
-                    <label for="problem">Problem Encountered (Optional)</label>
-                    <textarea id="problem" rows="2" placeholder="What challenge or roadblock did you run into?"></textarea>
+                    <label for="auth-email">Email Address *</label>
+                    <input type="email" id="auth-email" placeholder="you@example.com" required autocomplete="email">
+                    <small class="field-error" id="auth-email-error"></small>
                 </div>
 
                 <div class="form-group">
-                    <label for="what_i_learned">What You Learned & Solution *</label>
-                    <textarea id="what_i_learned" rows="4" placeholder="How did you solve it? What was the breakthrough?" required></textarea>
-                    <small class="field-error" id="what_i_learned-error"></small>
+                    <label for="auth-password">Password *</label>
+                    <input type="password" id="auth-password" placeholder="Minimum 8 characters" required
+                        autocomplete="current-password">
+                    <small class="field-error" id="auth-password-error"></small>
                 </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="project">Project Context (Optional)</label>
-                        <input type="text" id="project" placeholder="e.g. Content Automation Engine">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="lesson">Key Takeaway / Lesson</label>
-                        <input type="text" id="lesson" placeholder="e.g. Decoupling ensures resilience">
-                    </div>
-                </div>
-
-                <button type="submit" id="learning-submit-btn" class="btn btn-primary">
-                    Save & Generate AI Draft
-                </button>
-                <span id="form-spinner" class="spinner" style="display: none;"></span>
+                <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-block">Sign In</button>
+                <p id="auth-message" class="message-banner"></p>
             </form>
-            <p id="form-message" class="message-banner"></p>
         </section>
 
-        <!-- Two Column Layout: Learnings and Posts -->
-        <div class="columns-grid">
-            <!-- Learning Entries -->
-            <section class="card column-section">
+        <!-- Main App Container (Shown only when logged in) -->
+        <div id="app-workspace" style="display: none;">
+
+            <!-- Social Account Management Section -->
+            <section class="card social-accounts-card">
                 <div class="section-header">
-                    <h2>My Learning Journal</h2>
-                    <span id="learning-count" class="count-badge">0</span>
+                    <div>
+                        <h2>Connected Social Accounts</h2>
+                        <p class="subtitle" style="margin-bottom: 0;">Connect your destinations for LinkedIn, Facebook,
+                            and Instagram.</p>
+                    </div>
+                    <div class="account-actions-bar">
+                        <button id="connect-linkedin-btn" class="btn btn-linkedin btn-sm"
+                            onclick="startLinkedInOAuth()">
+                            + LinkedIn
+                        </button>
+                        <button class="btn btn-facebook btn-sm" onclick="openConnectModal('facebook')">
+                            + Facebook Page
+                        </button>
+                        <button class="btn btn-instagram btn-sm" onclick="openConnectModal('instagram')">
+                            + Instagram
+                        </button>
+                    </div>
                 </div>
-                <div id="learning-container" class="cards-list">
-                    <p class="empty-text">No learning entries yet.</p>
+
+                <div class="account-filter-tabs">
+                    <button class="filter-tab active" onclick="filterAccountsTab('all', this)">All Platforms</button>
+                    <button class="filter-tab" onclick="filterAccountsTab('linkedin', this)">LinkedIn</button>
+                    <button class="filter-tab" onclick="filterAccountsTab('facebook', this)">Facebook</button>
+                    <button class="filter-tab" onclick="filterAccountsTab('instagram', this)">Instagram</button>
+                </div>
+
+                <div id="social-accounts-list" class="accounts-grid">
+                    <p class="empty-text">Loading connected accounts...</p>
                 </div>
             </section>
 
-            <!-- Generated Posts / Drafts -->
-            <section class="card column-section">
-                <div class="section-header">
-                    <h2>Drafts & Multi-Platform Publications</h2>
-                    <span id="posts-count" class="count-badge">0</span>
-                </div>
-                <div id="posts-container" class="cards-list">
-                    <p class="empty-text">No posts generated yet.</p>
-                </div>
+            <!-- Create Learning Form -->
+            <section class="card">
+                <h2>Log Your Technical Learning</h2>
+                <p class="subtitle">Document what you learned today. Our AI will transform it into an authentic,
+                    high-engagement draft ready for publishing.</p>
+
+                <form id="learning-form" onsubmit="handleLearningSubmit(event)" novalidate>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="topic">Topic *</label>
+                            <input type="text" id="topic" placeholder="e.g. FastAPI Dependency Injection" required>
+                            <small class="field-error" id="topic-error"></small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="category">Category *</label>
+                            <input type="text" id="category" placeholder="e.g. Backend Development" required>
+                            <small class="field-error" id="category-error"></small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="problem">Problem Encountered (Optional)</label>
+                        <textarea id="problem" rows="2"
+                            placeholder="What challenge or roadblock did you run into?"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="what_i_learned">What You Learned & Solution *</label>
+                        <textarea id="what_i_learned" rows="4"
+                            placeholder="How did you solve it? What was the breakthrough?" required></textarea>
+                        <small class="field-error" id="what_i_learned-error"></small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="project">Project Context (Optional)</label>
+                            <input type="text" id="project" placeholder="e.g. Content Automation Engine">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="lesson">Key Takeaway / Lesson</label>
+                            <input type="text" id="lesson" placeholder="e.g. Decoupling ensures resilience">
+                        </div>
+                    </div>
+
+                    <button type="submit" id="learning-submit-btn" class="btn btn-primary">
+                        Save & Generate Draft
+                    </button>
+                    <span id="form-spinner" class="spinner" style="display: none;"></span>
+                </form>
+                <p id="form-message" class="message-banner"></p>
             </section>
+
+            <!-- Two Column Layout: Learnings and Posts -->
+            <div class="columns-grid">
+                <!-- Learning Entries -->
+                <section class="card column-section">
+                    <div class="section-header">
+                        <h2>My Learning Journal</h2>
+                        <span id="learning-count" class="count-badge">0</span>
+                    </div>
+                    <div id="learning-container" class="cards-list">
+                        <p class="empty-text">No learning entries yet.</p>
+                    </div>
+                </section>
+
+                <!-- Generated Posts / Drafts -->
+                <section class="card column-section">
+                    <div class="section-header">
+                        <h2>Drafts & Multi-Platform Publications</h2>
+                        <span id="posts-count" class="count-badge">0</span>
+                    </div>
+                    <div id="posts-container" class="cards-list">
+                        <p class="empty-text">No posts generated yet.</p>
+                    </div>
+                </section>
+            </div>
+
         </div>
 
-    </div>
+    </main>
 
-</main>
-
-<!-- Facebook Connect Modal -->
-<div id="modal-facebook" class="modal-overlay" style="display: none;">
-    <div class="modal-card">
-        <div class="modal-header">
-            <h3>Connect Facebook Page</h3>
-            <button class="modal-close-btn" onclick="closeConnectModal('facebook')">&times;</button>
+    <!-- Facebook Connect Modal -->
+    <div id="modal-facebook" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Connect Facebook Page</h3>
+                <button class="modal-close-btn" onclick="closeConnectModal('facebook')">&times;</button>
+            </div>
+            <form id="connect-fb-form" onsubmit="handleConnectFacebook(event)" novalidate>
+                <div class="form-group">
+                    <label for="fb-page-name">Facebook Page / Account Name *</label>
+                    <input type="text" id="fb-page-name" placeholder="e.g. Israel Tech Insights" required>
+                    <small class="field-error" id="fb-page-name-error"></small>
+                </div>
+                <div class="form-group">
+                    <label for="fb-page-id">Page ID or Username *</label>
+                    <input type="text" id="fb-page-id" placeholder="e.g. 10482910485720 or israeltech" required>
+                    <small class="field-error" id="fb-page-id-error"></small>
+                </div>
+                <div class="form-group">
+                    <label for="fb-email">Contact / Page Admin Email (Optional)</label>
+                    <input type="email" id="fb-email" placeholder="admin@example.com">
+                    <small class="field-error" id="fb-email-error"></small>
+                </div>
+                <div class="form-group">
+                    <label for="fb-token">Page Access Token *</label>
+                    <input type="password" id="fb-token" placeholder="Meta Graph API Page Access Token" required>
+                    <small class="field-error" id="fb-token-error"></small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary"
+                        onclick="closeConnectModal('facebook')">Cancel</button>
+                    <button type="submit" id="fb-submit-btn" class="btn btn-facebook">Save Facebook Account</button>
+                </div>
+                <p id="fb-modal-msg" class="message-banner"></p>
+            </form>
         </div>
-        <form id="connect-fb-form" onsubmit="handleConnectFacebook(event)" novalidate>
-            <div class="form-group">
-                <label for="fb-page-name">Facebook Page / Account Name *</label>
-                <input type="text" id="fb-page-name" placeholder="e.g. Israel Tech Insights" required>
-                <small class="field-error" id="fb-page-name-error"></small>
-            </div>
-            <div class="form-group">
-                <label for="fb-page-id">Page ID or Username *</label>
-                <input type="text" id="fb-page-id" placeholder="e.g. 10482910485720 or israeltech" required>
-                <small class="field-error" id="fb-page-id-error"></small>
-            </div>
-            <div class="form-group">
-                <label for="fb-email">Contact / Page Admin Email (Optional)</label>
-                <input type="email" id="fb-email" placeholder="admin@example.com">
-                <small class="field-error" id="fb-email-error"></small>
-            </div>
-            <div class="form-group">
-                <label for="fb-token">Page Access Token *</label>
-                <input type="password" id="fb-token" placeholder="Meta Graph API Page Access Token" required>
-                <small class="field-error" id="fb-token-error"></small>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeConnectModal('facebook')">Cancel</button>
-                <button type="submit" id="fb-submit-btn" class="btn btn-facebook">Save Facebook Account</button>
-            </div>
-            <p id="fb-modal-msg" class="message-banner"></p>
-        </form>
     </div>
-</div>
 
-<!-- Instagram Connect Modal -->
-<div id="modal-instagram" class="modal-overlay" style="display: none;">
-    <div class="modal-card">
-        <div class="modal-header">
-            <h3>Connect Instagram Account</h3>
-            <button class="modal-close-btn" onclick="closeConnectModal('instagram')">&times;</button>
+    <!-- Instagram Connect Modal -->
+    <div id="modal-instagram" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Connect Instagram Account</h3>
+                <button class="modal-close-btn" onclick="closeConnectModal('instagram')">&times;</button>
+            </div>
+            <form id="connect-ig-form" onsubmit="handleConnectInstagram(event)" novalidate>
+                <div class="form-group">
+                    <label for="ig-handle">Instagram Handle / Username *</label>
+                    <input type="text" id="ig-handle" placeholder="e.g. @tech_lead or israel_dev" required>
+                    <small class="field-error" id="ig-handle-error"></small>
+                </div>
+                <div class="form-group">
+                    <label for="ig-name">Display Name *</label>
+                    <input type="text" id="ig-name" placeholder="e.g. Israel's Coding Journey" required>
+                    <small class="field-error" id="ig-name-error"></small>
+                </div>
+                <div class="form-group">
+                    <label for="ig-email">Contact Email (Optional)</label>
+                    <input type="email" id="ig-email" placeholder="contact@example.com">
+                    <small class="field-error" id="ig-email-error"></small>
+                </div>
+                <div class="form-group">
+                    <label for="ig-token">Instagram User / Graph Access Token *</label>
+                    <input type="password" id="ig-token" placeholder="Meta / Instagram Graph API Access Token" required>
+                    <small class="field-error" id="ig-token-error"></small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary"
+                        onclick="closeConnectModal('instagram')">Cancel</button>
+                    <button type="submit" id="ig-submit-btn" class="btn btn-instagram">Save Instagram Account</button>
+                </div>
+                <p id="ig-modal-msg" class="message-banner"></p>
+            </form>
         </div>
-        <form id="connect-ig-form" onsubmit="handleConnectInstagram(event)" novalidate>
-            <div class="form-group">
-                <label for="ig-handle">Instagram Handle / Username *</label>
-                <input type="text" id="ig-handle" placeholder="e.g. @tech_lead or israel_dev" required>
-                <small class="field-error" id="ig-handle-error"></small>
-            </div>
-            <div class="form-group">
-                <label for="ig-name">Display Name *</label>
-                <input type="text" id="ig-name" placeholder="e.g. Israel's Coding Journey" required>
-                <small class="field-error" id="ig-name-error"></small>
-            </div>
-            <div class="form-group">
-                <label for="ig-email">Contact Email (Optional)</label>
-                <input type="email" id="ig-email" placeholder="contact@example.com">
-                <small class="field-error" id="ig-email-error"></small>
-            </div>
-            <div class="form-group">
-                <label for="ig-token">Instagram User / Graph Access Token *</label>
-                <input type="password" id="ig-token" placeholder="Meta / Instagram Graph API Access Token" required>
-                <small class="field-error" id="ig-token-error"></small>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeConnectModal('instagram')">Cancel</button>
-                <button type="submit" id="ig-submit-btn" class="btn btn-instagram">Save Instagram Account</button>
-            </div>
-            <p id="ig-modal-msg" class="message-banner"></p>
-        </form>
     </div>
-</div>
 
-<script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
+
 </html>
